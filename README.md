@@ -256,7 +256,7 @@ Same idea, different names. The Azure proof is [azure-static-website-poc](https:
 | Public address | `https://<account>.z13.web.core.windows.net` serves the index page | `https://storage.googleapis.com/<bucket>/index.html` serves the file. The bucket root lists names |
 | HTTPS on that address | Yes, on the website address | Yes, on the object address. The index and 404 settings still need a custom domain |
 | Who can read | The website endpoint serves the pages. Anonymous listing of the container stays off | `allUsers` with Storage Object Viewer. That role can also list object names |
-| Who can upload | Storage Blob Data Contributor, separate from Owner | The signed-in user, for the scripts. The workflow uses service account `gh-staticweb-poc` with Storage Object Admin on this bucket only |
+| Who can upload | Storage Blob Data Contributor, separate from Owner | The signed-in user, for the scripts. The workflow uses service account `gh-staticweb-poc` with Storage Object Admin and Storage Legacy Bucket Reader on this bucket only |
 | Upload command | `az storage blob upload-batch` adds and overwrites. A deleted page stays live | `gcloud storage rsync --delete-unmatched-destination-objects` removes a cloud file when the local file is gone |
 | Marks for cleanup | Tags. `created` can contain a colon | Labels. `created` uses `2026-10-26t17-30-00z` because a colon is not allowed |
 | Name after delete | The resource group name can be reused | The project id cannot be reused until the delete finishes, which can take 30 days |
@@ -282,7 +282,7 @@ A small public website can be hosted from a Google Cloud Storage bucket, with an
 | 7 | The bucket root lists object names instead of serving the index page | `verify.sh` found `ListBucketResult` | ✅ |
 | 8 | The project and the bucket are removed by `teardown.sh`, and only if the labels match | Run teardown and type the project id | not checked yet |
 | 9 | A push to `main` uploads `site/` with no key file | The GitHub Actions run for that push | not checked yet |
-| 10 | The deploy identity can write objects in this bucket only | Bucket policy lists Storage Object Admin for `gh-staticweb-poc`. The project policy lists no role for that account. Checked October 26, 2026 | ✅ |
+| 10 | The deploy identity can write objects in this bucket only | Bucket policy lists Storage Object Admin and Storage Legacy Bucket Reader for `gh-staticweb-poc`. The project policy lists no role for that account. Checked October 26, 2026 | ✅ |
 
 ## What's in this repository
 

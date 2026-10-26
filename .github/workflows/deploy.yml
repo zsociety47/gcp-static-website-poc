@@ -46,6 +46,11 @@ jobs:
               --recursive \
               --delete-unmatched-destination-objects \
               --exclude='\.DS_Store$' 2>&1)"; do
+            if [[ "$UPLOAD_ERROR" == *"storage.buckets.get"* ]]; then
+              printf '%s\n' "$UPLOAD_ERROR" >&2
+              echo "rsync needs to read the bucket. Object Admin does not include that." >&2
+              exit 1
+            fi
             if [[ "$UPLOAD_ERROR" != *"403"* && "$UPLOAD_ERROR" != *"denied"* && "$UPLOAD_ERROR" != *"Permission"* ]]; then
               printf '%s\n' "$UPLOAD_ERROR" >&2
               exit 1

@@ -130,6 +130,15 @@ gcloud storage buckets add-iam-policy-binding "gs://${BUCKET_NAME}" \
   --member="serviceAccount:${SA_EMAIL}" \
   --role="roles/storage.objectAdmin" >/dev/null
 
+# rsync reads bucket metadata before it copies files. Object Admin does not
+# include that. Legacy Bucket Reader adds it, and it cannot delete the bucket
+# or change who can read the site.
+echo "==> Letting that account read this bucket"
+gcloud storage buckets add-iam-policy-binding "gs://${BUCKET_NAME}" \
+  --project="$GCP_PROJECT_ID" \
+  --member="serviceAccount:${SA_EMAIL}" \
+  --role="roles/storage.legacyBucketReader" >/dev/null
+
 PROJECT_NUMBER="$(gcloud projects describe "$GCP_PROJECT_ID" --format="value(projectNumber)")"
 MEMBER="principalSet://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${POOL_ID}/attribute.repository/${REPO}"
 
