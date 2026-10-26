@@ -281,7 +281,7 @@ A small public website can be hosted from a Google Cloud Storage bucket, with an
 | 6 | No key file or billing account id is stored in the repository | `.env` is gitignored. `git status` does not list it | ✅ |
 | 7 | The bucket root lists object names instead of serving the index page | `verify.sh` found `ListBucketResult` | ✅ |
 | 8 | The project and the bucket are removed by `teardown.sh`, and only if the labels match | Run teardown and type the project id | not checked yet |
-| 9 | A push to `main` uploads `site/` with no key file | The GitHub Actions run for that push | not checked yet |
+| 9 | A push to `main` uploads `site/` with no key file | [Deploy run 40408369365](https://github.com/zsociety47/gcp-static-website-poc/actions/runs/40408369365) succeeded on October 26, 2026 | ✅ |
 | 10 | The deploy identity can write objects in this bucket only | Bucket policy lists Storage Object Admin and Storage Legacy Bucket Reader for `gh-staticweb-poc`. The project policy lists no role for that account. Checked October 26, 2026 | ✅ |
 
 ## What's in this repository
