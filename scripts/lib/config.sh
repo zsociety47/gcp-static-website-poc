@@ -7,7 +7,7 @@
 # Repo root is two levels up from scripts/lib/.
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
-PROJECT_LABEL="gcp-static-website-poc"
+PROJECT_LABEL="01-gcp-static-website-poc"
 OWNER_LABEL="zeon"
 LIFETIME_LABEL="1d"
 
@@ -74,13 +74,17 @@ project_exists() {
 
 # Returns 0 only when the bucket is in this project. An empty project label is
 # allowed so a bucket can be removed if labeling failed halfway through.
+# buckets describe does not include a project number, so membership is
+# "this project lists this bucket".
 assert_our_bucket() {
-  local our_number bucket_number bucket_label
-  our_number="$(gcloud projects describe "$GCP_PROJECT_ID" --format="value(projectNumber)")"
-  bucket_number="$(gcloud storage buckets describe "gs://${BUCKET_NAME}" --format="value(projectNumber)")"
+  local listed bucket_label
+  listed="$(gcloud storage buckets list \
+    --project="$GCP_PROJECT_ID" \
+    --filter="name=${BUCKET_NAME}" \
+    --format="value(name)")"
   bucket_label="$(gcloud storage buckets describe "gs://${BUCKET_NAME}" --format="value(labels.project)")"
 
-  if [[ -z "$our_number" || "$bucket_number" != "$our_number" ]]; then
+  if [[ "$listed" != "$BUCKET_NAME" ]]; then
     echo "Refusing to touch gs://${BUCKET_NAME}: it is not in project ${GCP_PROJECT_ID}." >&2
     exit 1
   fi

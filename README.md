@@ -12,8 +12,8 @@ Video not recorded yet. The thumbnail and the link go here after the recording.
 
 - **What it is:** a website that runs directly from Google Cloud Storage, with no server to rent, patch, or keep running.
 - **Business problem:** a small business needs a public website that is fast, cheap, and has nothing to maintain.
-- **What's automated:** three scripts create the project and the bucket, upload the pages, check the public address, and delete the project again.
-- **Why it's secure:** no key file is stored in this repository. Visitors can read the pages. They cannot change the bucket.
+- **What's automated:** scripts create the project and the bucket, check the public address, and delete the project. A push to `main` uploads the pages.
+- **Why it's secure:** no key file is stored in this repository. GitHub signs in with Workload Identity Federation. Visitors can read the pages. They cannot change the bucket.
 - **Result:** `verify.sh` printed `16 passed, 0 failed` on October 26, 2026. The home page is the object address above. The bucket root lists file names instead of serving `index.html`, because Google applies the index and 404 pages only on a custom domain.
 
 Part of [Cloud Projects](https://github.com/zsociety47/cloud-projects). Technical details are in [Technical findings](#technical-findings) at the bottom.
@@ -41,7 +41,7 @@ Screenshots are not taken yet. Each image line stays commented out until the fil
 5. Add these four labels. A label value cannot contain a colon, so the time uses hyphens: `2026-10-26t17-30-00z`.
    - `lifetime` = `1d`
    - `owner` = `zeon`
-   - `project` = `gcp-static-website-poc`
+   - `project` = `01-gcp-static-website-poc`
    - `created` = the time you created it, in that hyphen form
 
 <!-- ![Project page with the four labels](docs/images/step-01-project.png) -->
@@ -185,11 +185,21 @@ The script prints the site address. Re-running it reuses the project only if tha
 ./scripts/verify.sh
 ```
 
-**4. Tear it down** (step 9)
+**4. Let GitHub upload on push**
+
+```bash
+./scripts/setup-wif.sh
+```
+
+This creates a free identity for this repository. It does not create a key. After it saves the GitHub values, a push to `main` runs `.github/workflows/deploy.yml`, which signs in and uploads `site/`. The first push is the check that this works.
+
+**5. Tear it down** (step 9)
 
 ```bash
 ./scripts/teardown.sh
 ```
+
+The prompt names the bucket, the identity pool, the service account, and the GitHub values. Deleting the project removes the pool and the service account. The script removes the GitHub values by name.
 
 ---
 
@@ -201,21 +211,23 @@ The design picture is not drawn yet. When this build is finished, redraw it on t
 flowchart TD
     user["Visitor's browser"]
     dev["deploy.sh<br/>on your laptop"]
+    gha["GitHub Actions<br/>push to main"]
 
     subgraph proj["staticweb-poc-zeon01 · Google Cloud project"]
         bucket["staticweb-poc-zeon01<br/>Cloud Storage bucket"]
         web["index.html · 404.html"]
     end
 
-    user -- "HTTP" --> web
+    user -- "HTTPS" --> web
     dev -. "gcloud storage rsync" .-> bucket
+    gha -. "Workload Identity Federation" .-> bucket
     bucket --> web
 
     classDef gcp fill:#1a73e8,stroke:#174ea6,color:#fff
     classDef external fill:#6e7681,stroke:#484f58,color:#fff
 
     class bucket,web gcp
-    class user,dev external
+    class user,dev,gha external
 ```
 
 **How to read this diagram**
@@ -224,7 +236,7 @@ flowchart TD
 - **Dashed arrow:** how the files get there.
 - **Blue:** Google Cloud resources. The shared diagram standard uses Azure blue for Azure resources. This cloud uses Google blue (`#1a73e8`) for its own resources. **Gray:** outside the cloud (the visitor and the laptop).
 
-*A visitor reads the pages over HTTP from the bucket's website address. `deploy.sh` uploads `site/` with the signed-in gcloud user. There is no key file in the repository.*
+*A visitor reads a page over HTTPS at its object address. `deploy.sh` and a push to `main` both upload `site/` with `gcloud storage rsync`. There is no key file in the repository.*
 
 The names in the diagram are the examples in `.env.example`. If you change `.env`, change this diagram in the same commit.
 
@@ -244,18 +256,18 @@ Same idea, different names. The Azure proof is [azure-static-website-poc](https:
 | Public address | `https://<account>.z13.web.core.windows.net` serves the index page | `https://storage.googleapis.com/<bucket>/index.html` serves the file. The bucket root lists names |
 | HTTPS on that address | Yes, on the website address | Yes, on the object address. The index and 404 settings still need a custom domain |
 | Who can read | The website endpoint serves the pages. Anonymous listing of the container stays off | `allUsers` with Storage Object Viewer. That role can also list object names |
-| Who can upload | Storage Blob Data Contributor, separate from Owner | The signed-in user who owns the project. No separate data role was required to upload |
+| Who can upload | Storage Blob Data Contributor, separate from Owner | The signed-in user, for the scripts. The workflow uses service account `gh-staticweb-poc` with Storage Object Admin on this bucket only |
 | Upload command | `az storage blob upload-batch` adds and overwrites. A deleted page stays live | `gcloud storage rsync --delete-unmatched-destination-objects` removes a cloud file when the local file is gone |
 | Marks for cleanup | Tags. `created` can contain a colon | Labels. `created` uses `2026-10-26t17-30-00z` because a colon is not allowed |
 | Name after delete | The resource group name can be reused | The project id cannot be reused until the delete finishes, which can take 30 days |
 | Region | East US | `us-east1`, because that region is in the storage free tier |
-| Deploy from GitHub with no stored password | OpenID Connect (OIDC) and a federated credential | Not in this pass. The scripts use your gcloud login |
+| Deploy from GitHub with no stored password | OpenID Connect (OIDC) and a federated credential | Workload Identity Federation. A push to `main` uploads `site/`. No key file |
 
 ---
 
 ## Hypothesis
 
-A small public website can be hosted from a Google Cloud Storage bucket, with an index page and a missing-page file set on the bucket, and the whole project can be removed by a script.
+A small public website can be hosted from a Google Cloud Storage bucket, with an index page and a missing-page file set on the bucket. A push to `main` can upload the pages with no stored key, and a script can remove the project.
 
 ## Success criteria
 
@@ -269,6 +281,8 @@ A small public website can be hosted from a Google Cloud Storage bucket, with an
 | 6 | No key file or billing account id is stored in the repository | `.env` is gitignored. `git status` does not list it | ✅ |
 | 7 | The bucket root lists object names instead of serving the index page | `verify.sh` found `ListBucketResult` | ✅ |
 | 8 | The project and the bucket are removed by `teardown.sh`, and only if the labels match | Run teardown and type the project id | not checked yet |
+| 9 | A push to `main` uploads `site/` with no key file | The GitHub Actions run for that push | not checked yet |
+| 10 | The deploy identity can write objects in this bucket only | Bucket policy lists Storage Object Admin for `gh-staticweb-poc`. The project policy lists no role for that account. Checked October 26, 2026 | ✅ |
 
 ## What's in this repository
 
@@ -277,10 +291,15 @@ A small public website can be hosted from a Google Cloud Storage bucket, with an
 ├── site/                 The pages. Copied from the Azure proof so the two hosts can be compared
 ├── scripts/
 │   ├── deploy.sh         Creates the project and the bucket, sets the website, uploads site/
+│   ├── setup-wif.sh      Lets GitHub Actions upload with no key file
 │   ├── verify.sh         Prints a pass or fail line for each check
-│   ├── teardown.sh       Deletes the bucket and the project after you type the project id
+│   ├── teardown.sh       Lists the bucket, the identity, and the GitHub values, then deletes them after you type the project id
 │   └── lib/
 │       └── config.sh     Loads .env and refuses to touch a project this proof did not label
+├── .github/
+│   ├── workflows/
+│   │   └── deploy.yml    Uploads site/ on a push to main
+│   └── dependabot.yml    Weekly check for new GitHub Action versions
 ├── .env.example          The names. Copy to .env. Never commit .env
 └── docs/
     └── images/           Screenshots, added after they are taken
@@ -288,7 +307,7 @@ A small public website can be hosted from a Google Cloud Storage bucket, with an
 
 ## Security choices
 
-- **No key file.** The scripts use `gcloud auth login`. `.env` holds the project id and the billing account id, and `.gitignore` keeps that file out of git.
+- **No key file.** The scripts use `gcloud auth login`. The workflow uses Workload Identity Federation. `.env` holds the project id and the billing account id, and `.gitignore` keeps that file out of git. The provider resource name is a GitHub secret because it contains the project number.
 - **One bucket policy.** Uniform bucket-level access is on, so a file cannot carry a different access list than the bucket.
 - **Public read is deliberate.** `allUsers` has Storage Object Viewer because a public website has to be readable without a sign-in. That role can also list object names. Say that out loud when you show the permissions page.
 - **The scripts will not touch a stranger's project.** If the project id already exists and it does not have this proof's labels, `deploy.sh` stops. `teardown.sh` does the same before it deletes anything.
@@ -307,8 +326,7 @@ This proof does not create Cloud CDN (content delivery network) or an HTTPS load
 
 ## Going further
 
-- **HTTPS.** Put a load balancer and a certificate in front of the bucket. Do it only when the monthly forwarding-rule charge is acceptable.
-- **GitHub deploy with no stored key.** The Azure proof signs GitHub Actions in with OpenID Connect. The Google Cloud version of that is Workload Identity Federation. It is not required to prove the bucket website, and it is easy to lose an afternoon on the subject string.
+- **HTTPS on a custom domain.** Put a load balancer and a certificate in front of the bucket. Do it only when the monthly forwarding-rule charge is acceptable. The object address is already HTTPS.
 - **List names or not.** A custom role with only `storage.objects.get` would let visitors open a page without listing every file name.
 
 ---

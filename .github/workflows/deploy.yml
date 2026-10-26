@@ -1,0 +1,62 @@
+# Uploads site/ when main changes.
+# The job uses the production environment because the trust rule requires
+# that subject. Sign-in runs before the upload, so a missing identity
+# fails before any file is written.
+
+name: Deploy static website
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: production
+      url: ${{ vars.SITE_URL }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Sign in to Google Cloud with Workload Identity Federation
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+
+      - name: Install the Google Cloud command-line interface
+        uses: google-github-actions/setup-gcloud@v3
+
+      - name: Upload site to the bucket
+        env:
+          BUCKET_NAME: ${{ vars.BUCKET_NAME }}
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+        run: |
+          set -euo pipefail
+          WAITED=0
+          until UPLOAD_ERROR="$(gcloud storage rsync site "gs://${BUCKET_NAME}" \
+              --project="${GCP_PROJECT_ID}" \
+              --recursive \
+              --delete-unmatched-destination-objects \
+              --exclude='\.DS_Store$' 2>&1)"; do
+            if [[ "$UPLOAD_ERROR" != *"403"* && "$UPLOAD_ERROR" != *"denied"* && "$UPLOAD_ERROR" != *"Permission"* ]]; then
+              printf '%s\n' "$UPLOAD_ERROR" >&2
+              exit 1
+            fi
+            if (( WAITED >= 600 )); then
+              printf '%s\n' "$UPLOAD_ERROR" >&2
+              echo "The new role is still not active after 10 minutes. Re-run this job in a few minutes." >&2
+              exit 1
+            fi
+            printf '    Waiting for the new role to take effect... (%dm %02ds)\n' $((WAITED / 60)) $((WAITED % 60))
+            sleep 15
+            WAITED=$((WAITED + 15))
+          done
+          echo "    Uploaded."
