@@ -108,9 +108,9 @@ gcloud storage rsync "$SITE_DIR" "gs://${BUCKET_NAME}" \
   --exclude='\.DS_Store$'
 
 echo
-echo "Done. The site is available at:"
-echo "  $WEB_URL"
+echo "Done. Open the home page at:"
+echo "  https://storage.googleapis.com/${BUCKET_NAME}/index.html"
 echo
-echo "That address is HTTP (Hypertext Transfer Protocol), not HTTPS. A bucket website does not serve HTTPS."
-echo "A missing page should show the custom 404 file: ${WEB_URL}does-not-exist"
+echo "The bucket root (${WEB_URL}) lists object names. Google applies index.html and 404.html"
+echo "only when a custom domain points at the bucket, not on storage.googleapis.com."
 echo "Check it with: ./scripts/verify.sh"

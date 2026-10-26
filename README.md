@@ -6,7 +6,7 @@ Video not recorded yet. The thumbnail and the link go here after the recording.
 
 <!-- [![Watch the video](docs/images/loom-thumbnail.gif)](LOOM_LINK) -->
 
-**Live site:** not created yet. The address will be `http://<bucket-name>.storage.googleapis.com/`. **Author:** Zeon Stewart, [LinkedIn](LINKEDIN_LINK_HERE)
+**Live page:** [index.html](https://storage.googleapis.com/staticweb-poc-zeon01/index.html) · **Author:** Zeon Stewart, [LinkedIn](LINKEDIN_LINK_HERE)
 
 ## At a glance
 
@@ -14,7 +14,7 @@ Video not recorded yet. The thumbnail and the link go here after the recording.
 - **Business problem:** a small business needs a public website that is fast, cheap, and has nothing to maintain.
 - **What's automated:** three scripts create the project and the bucket, upload the pages, check the public address, and delete the project again.
 - **Why it's secure:** no key file is stored in this repository. Visitors can read the pages. They cannot change the bucket.
-- **Result:** not proven yet. The checks below stay open until `scripts/verify.sh` prints zero failures.
+- **Result:** `verify.sh` printed `16 passed, 0 failed` on October 26, 2026. The home page is the object address above. The bucket root lists file names instead of serving `index.html`, because Google applies the index and 404 pages only on a custom domain.
 
 Part of [Cloud Projects](https://github.com/zsociety47/cloud-projects). Technical details are in [Technical findings](#technical-findings) at the bottom.
 
@@ -26,7 +26,7 @@ These steps build the site by hand in the [Google Cloud console](https://console
 
 Copy `.env.example` to `.env` first and pick a project id and a bucket name. Both have to be unique across Google Cloud, not just in your account. Use those names wherever this page says `<project-id>` and `<bucket-name>`.
 
-The website address is HTTP (Hypertext Transfer Protocol) only. It is not HTTPS (Hypertext Transfer Protocol Secure). That is a limit of bucket website hosting, not a missed setting. Putting HTTPS in front of the bucket needs a load balancer, which costs money while it sits idle, so this proof does not do that.
+Opening `https://storage.googleapis.com/<bucket-name>/index.html` returns the page over HTTPS (Hypertext Transfer Protocol Secure). Opening the bucket root, `http://<bucket-name>.storage.googleapis.com/`, returns an XML list of file names. Google applies `index.html` and `404.html` only when a custom domain points at the bucket. This proof does not add that domain, and it does not add a load balancer. A load balancer costs money while it sits idle.
 
 Screenshots are not taken yet. Each image line stays commented out until the file exists. The shot list is in the private notes.
 
@@ -109,8 +109,9 @@ The script also deletes a cloud file when that file is gone from `site/`. A plai
 
 ### Step 7: Open the site
 
-1. Open `http://<bucket-name>.storage.googleapis.com/`. The home page loads. The address bar says HTTP, not HTTPS.
-2. Add `does-not-exist` to the end of the address. The custom 404 page loads.
+1. Open `https://storage.googleapis.com/<bucket-name>/index.html`. The home page loads.
+2. Open `https://storage.googleapis.com/<bucket-name>/404.html`. The custom missing-page file loads.
+3. Open `http://<bucket-name>.storage.googleapis.com/`. The response is an XML list of the file names, not the home page. That is the documented behavior on this host.
 
 <!-- ![The live home page over HTTP](docs/images/step-07-live-site.png) -->
 <!-- ![The custom 404 page](docs/images/step-07-404.png) -->
@@ -123,9 +124,9 @@ The script also deletes a cloud file when that file is gone from `site/`. A plai
 ./scripts/verify.sh
 ```
 
-The last line should be `14 passed, 0 failed`.
+The last line should be `16 passed, 0 failed`.
 
-<!-- ![verify.sh printing 14 passed, 0 failed](docs/images/step-08-verify.png) -->
+<!-- ![verify.sh printing 16 passed, 0 failed](docs/images/step-08-verify.png) -->
 
 ### Step 9: Clean up when you're done
 
@@ -240,8 +241,8 @@ Same idea, different names. The Azure proof is [azure-static-website-poc](https:
 | Where the files live | Storage account `ststaticwebpoczeon01` | Bucket `staticweb-poc-zeon01` |
 | What groups the resources | Resource group `rg-staticweb-poc-zeon01` | Project `<project-id>`. Deleting the project deletes what is inside it |
 | How the site is turned on | Static website on the `$web` container | Website configuration: index suffix and error page |
-| Public address | `https://<account>.z13.web.core.windows.net` | `http://<bucket>.storage.googleapis.com` |
-| HTTPS on that address | Yes, by default | No. HTTPS needs a load balancer in front, which this proof does not create |
+| Public address | `https://<account>.z13.web.core.windows.net` serves the index page | `https://storage.googleapis.com/<bucket>/index.html` serves the file. The bucket root lists names |
+| HTTPS on that address | Yes, on the website address | Yes, on the object address. The index and 404 settings still need a custom domain |
 | Who can read | The website endpoint serves the pages. Anonymous listing of the container stays off | `allUsers` with Storage Object Viewer. That role can also list object names |
 | Who can upload | Storage Blob Data Contributor, separate from Owner | The signed-in user who owns the project. No separate data role was required to upload |
 | Upload command | `az storage blob upload-batch` adds and overwrites. A deleted page stays live | `gcloud storage rsync --delete-unmatched-destination-objects` removes a cloud file when the local file is gone |
@@ -260,13 +261,14 @@ A small public website can be hosted from a Google Cloud Storage bucket, with an
 
 | # | Criterion | How it is checked | Result |
 |---|-----------|-------------------|--------|
-| 1 | The home page loads over HTTP from the bucket website address | `verify.sh` check 1, and the browser | not checked yet |
-| 2 | The home page is the tracker page | `verify.sh` looks for `Cloud Build Tracker` | not checked yet |
-| 3 | A missing page returns the custom 404 page | `verify.sh` checks status 404 and the page text | not checked yet |
-| 4 | The bucket serves `index.html` and `404.html` as its website files | `verify.sh` reads the bucket website settings | not checked yet |
-| 5 | The project and the bucket carry `lifetime`, `owner`, `project`, and `created` | `verify.sh` reads the labels | not checked yet |
-| 6 | No key file or billing account id is stored in the repository | Review `.gitignore` and the commits | not checked yet |
-| 7 | The project and the bucket are removed by `teardown.sh`, and only if the labels match | Run teardown and type the project id | not checked yet |
+| 1 | `index.html` loads over HTTPS from its object address | `verify.sh` on October 26, 2026 | ✅ |
+| 2 | The home page is the tracker page | `verify.sh` found `Cloud Build Tracker` | ✅ |
+| 3 | `404.html` is public, and a missing object returns HTTP 404 | `verify.sh` | ✅ |
+| 4 | The bucket's website settings name `index.html` and `404.html` | `verify.sh` read `website_config` | ✅ |
+| 5 | The project and the bucket carry `lifetime`, `owner`, `project`, and `created` | `verify.sh` read the labels | ✅ |
+| 6 | No key file or billing account id is stored in the repository | `.env` is gitignored. `git status` does not list it | ✅ |
+| 7 | The bucket root lists object names instead of serving the index page | `verify.sh` found `ListBucketResult` | ✅ |
+| 8 | The project and the bucket are removed by `teardown.sh`, and only if the labels match | Run teardown and type the project id | not checked yet |
 
 ## What's in this repository
 
@@ -315,7 +317,8 @@ This proof does not create Cloud CDN (content delivery network) or an HTTPS load
 
 *Known before the first create. Errors from the real run get appended here with the exact text.*
 
-- **The bucket website address is HTTP only.** Google's own documentation says the website endpoint does not serve HTTPS. The Azure storage website address does. This proof does not hide that by putting a load balancer in front, because the load balancer is the part that costs money while idle.
+- **The index and 404 settings do not apply on `storage.googleapis.com`.** After the first deploy, `http://staticweb-poc-zeon01.storage.googleapis.com/` returned HTTP 200 with `Content-Type: application/xml` and a `ListBucketResult` body. `does-not-exist` returned `NoSuchKey`. `gcloud storage buckets describe` still showed `website_config.mainPageSuffix=index.html` and `notFoundPage=404.html`. Google's documentation says those two settings are used only for requests that arrive through a CNAME or an A record. The pages themselves are public at `https://storage.googleapis.com/staticweb-poc-zeon01/index.html` and `404.html`. `verify.sh` checks those object addresses, and it also checks that the bucket root is still the object list.
+- **The first verify looked at the wrong field name.** `gcloud storage buckets describe --format=json` calls the website block `website_config`, not `website`. The check now reads `website_config`.
 - **A project id is single-use for a long time.** `gcloud projects delete` starts a shutdown. Google's docs say the id cannot be reused until that shutdown finishes, and shutdown can take 30 days. The Azure resource group name can be reused as soon as the delete completes. `.env` is where the id lives so the next build can use a new one without editing the scripts.
 - **Label values cannot contain a colon.** The nightly sweep already accepts `2026-10-26t17-30-00z` for that reason. The scripts write `created` in that form.
 - **`roles/storage.objectViewer` includes list.** Granting it to `allUsers` makes the site public and also makes the object names public. The scripts use it because that is the role Google's website guide names. The tighter role is listed under Going further.

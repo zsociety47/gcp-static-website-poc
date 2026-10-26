@@ -46,28 +46,45 @@ yes_no() {
   fi
 }
 
-WEB_URL="http://${BUCKET_NAME}.storage.googleapis.com/"
+# Specialty pages (index and the custom 404) are only applied when a custom
+# domain points at the bucket. On storage.googleapis.com the root URL lists
+# objects, and a missing name returns the API's own 404. The pages themselves
+# are still public at their object addresses.
+OBJECT_ROOT="https://storage.googleapis.com/${BUCKET_NAME}"
+API_ROOT="http://${BUCKET_NAME}.storage.googleapis.com/"
 HOME_BODY="$(mktemp)"
+PAGE_404_BODY="$(mktemp)"
 MISS_BODY="$(mktemp)"
-trap 'rm -f "$HOME_BODY" "$MISS_BODY"' EXIT
+ROOT_BODY="$(mktemp)"
+trap 'rm -f "$HOME_BODY" "$PAGE_404_BODY" "$MISS_BODY" "$ROOT_BODY"' EXIT
 
-echo "Checking $WEB_URL"
+echo "Checking ${OBJECT_ROOT}/index.html"
 echo
 
-home_code="$(curl -sS -o "$HOME_BODY" -w '%{http_code}' "$WEB_URL" || true)"
-check "home page returns HTTP 200" "$(yes_no "$home_code" "200")"
+home_code="$(curl -sS -o "$HOME_BODY" -w '%{http_code}' "${OBJECT_ROOT}/index.html" || true)"
+check "index.html returns HTTP 200" "$(yes_no "$home_code" "200")"
 if grep -q "Cloud Build Tracker" "$HOME_BODY"; then
-  check "home page contains the tracker title" "yes"
+  check "index.html contains the tracker title" "yes"
 else
-  check "home page contains the tracker title" "no"
+  check "index.html contains the tracker title" "no"
 fi
 
-miss_code="$(curl -sS -o "$MISS_BODY" -w '%{http_code}' "${WEB_URL}does-not-exist" || true)"
-check "a missing page returns HTTP 404" "$(yes_no "$miss_code" "404")"
-if grep -q "drifted off into the cloud" "$MISS_BODY"; then
-  check "the 404 body is the custom page" "yes"
+page_404_code="$(curl -sS -o "$PAGE_404_BODY" -w '%{http_code}' "${OBJECT_ROOT}/404.html" || true)"
+check "404.html returns HTTP 200" "$(yes_no "$page_404_code" "200")"
+if grep -q "drifted off into the cloud" "$PAGE_404_BODY"; then
+  check "404.html is the custom page" "yes"
 else
-  check "the 404 body is the custom page" "no"
+  check "404.html is the custom page" "no"
+fi
+
+miss_code="$(curl -sS -o "$MISS_BODY" -w '%{http_code}' "${OBJECT_ROOT}/does-not-exist" || true)"
+check "a missing object returns HTTP 404" "$(yes_no "$miss_code" "404")"
+
+root_code="$(curl -sS -o "$ROOT_BODY" -w '%{http_code}' "$API_ROOT" || true)"
+if [[ "$root_code" == "200" ]] && grep -q "ListBucketResult" "$ROOT_BODY"; then
+  check "bucket root lists objects (index page needs a custom domain)" "yes"
+else
+  check "bucket root lists objects (index page needs a custom domain)" "no"
 fi
 
 if project_exists; then
@@ -88,7 +105,7 @@ check "project label created is set" "$([[ -n "$project_created" ]] && echo yes 
 
 if gcloud storage buckets describe "gs://${BUCKET_NAME}" --project="$GCP_PROJECT_ID" >/dev/null 2>&1; then
   bucket_row="$(gcloud storage buckets describe "gs://${BUCKET_NAME}" --project="$GCP_PROJECT_ID" \
-    --format="csv[no-heading](website.mainPageSuffix,website.notFoundPage,labels.lifetime,labels.owner,labels.project,labels.created)")"
+    --format="csv[no-heading](website_config.mainPageSuffix,website_config.notFoundPage,labels.lifetime,labels.owner,labels.project,labels.created)")"
   IFS=',' read -r main_page error_page bucket_lifetime bucket_owner bucket_project bucket_created <<<"$bucket_row"
 else
   main_page=""
