@@ -423,13 +423,19 @@
   {
    "id": "gcp-projects-1",
    "track": "gcp-labs",
+   "catalog": true,
+   "n": 1,
    "name": "Project 1: Static website",
    "planned": "2026-10-24",
-   "built": null,
+   "built": "2026-10-26",
    "video": "planned",
    "posts": "planned",
    "current": false,
-   "doc": "planned"
+   "doc": "planned",
+   "links": {
+    "github": "https://github.com/zsociety47/gcp-static-website-poc"
+   },
+   "blurb": "A public site served from a Cloud Storage bucket. A push to main uploads the pages with no stored key."
   },
   {
    "id": "gcp-projects-2",

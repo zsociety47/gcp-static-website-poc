@@ -159,6 +159,10 @@ A deleted project id cannot be reused until Google finishes the delete, which ca
 
 ## Automated setup
 
+### Run this as yourself
+
+Copy `.env.example` to `.env` and replace `yourname01` with your owner word. A project id cannot be reused after it is deleted. A bucket name must be unique on Google Cloud. Change the `owner` label in the project steps from `zeon` to you. Do not copy my billing account id.
+
 The same build as the Project Steps. Nothing here creates a resource until you run `deploy.sh`.
 
 **Prerequisites:** the Google Cloud command-line interface (CLI), signed in with `gcloud auth login`, and a billing account you are allowed to link. `curl` is used by the check.
@@ -169,7 +173,7 @@ The same build as the Project Steps. Nothing here creates a resource until you r
 cp .env.example .env
 ```
 
-Fill in `GCP_BILLING_ACCOUNT`. Leave the other three values unless the project id or the bucket name is already taken. Do not commit `.env`.
+Fill in `GCP_BILLING_ACCOUNT`. Change `GCP_PROJECT_ID` and `BUCKET_NAME` so they are yours, not `zeon01`. A project id cannot be reused after delete, and a bucket name must be unique on Google Cloud. Do not commit `.env`.
 
 **2. Create the project, the bucket, and the site** (steps 1-7)
 
