@@ -44,7 +44,7 @@ Screenshots are not taken yet. Each image line stays commented out until the fil
    - `project` = `01-gcp-static-website-poc`
    - `created` = the time you created it, in that hyphen form
 
-<!-- ![Project page with the four labels](docs/images/step-01-project.png) -->
+![Project page with the four labels](docs/images/step-01-project.png)
 
 ### Step 2: Link billing
 
@@ -55,7 +55,7 @@ Cloud Storage will not turn on until a billing account is linked. Linking it mak
 1. Open **Billing** and link your billing account to `<project-id>`.
 2. Do not copy the billing account id into the repository, a screenshot, or a commit.
 
-<!-- ![Billing linked, with the account id cropped out](docs/images/step-02-billing.png) -->
+![Billing linked. The billing account id is not in the picture](docs/images/step-02-billing.png)
 
 ### Step 3: Create the bucket
 
@@ -70,7 +70,9 @@ Cloud Storage will not turn on until a billing account is linked. Linking it mak
 7. **Soft delete:** off (duration 0). Deleted files are not kept, so they cannot add a storage charge.
 8. Add the same four labels as the project.
 
-<!-- ![Bucket details: us-east1, Standard, uniform access, public access prevention off](docs/images/step-03-bucket.png) -->
+![Bucket in us-east1, Standard storage, with the four labels](docs/images/step-03-bucket.png)
+
+![Uniform access, and public access prevention not enabled](docs/images/step-03-access.png)
 
 ### Step 4: Set the index page and the missing-page file
 
@@ -81,7 +83,7 @@ Cloud Storage will not turn on until a billing account is linked. Linking it mak
 3. **Error page:** `404.html`
 4. Save.
 
-<!-- ![Website configuration with index.html and 404.html](docs/images/step-04-website.png) -->
+![Website configuration with index.html and 404.html](docs/images/step-04-website.png)
 
 ### Step 5: Let anyone read the objects
 
@@ -94,7 +96,7 @@ Cloud Storage will not turn on until a billing account is linked. Linking it mak
 
 This role lets a visitor open a file. It also lets a visitor list the file names in the bucket. The Azure site does not list names from its website address. That difference is recorded in [Google Cloud and Azure](#google-cloud-and-azure).
 
-<!-- ![Permissions tab: allUsers has Storage Object Viewer](docs/images/step-05-public-read.png) -->
+![Permissions: allUsers is under Storage Object Viewer](docs/images/step-05-public-read.png)
 
 ### Step 6: Upload the site files
 
@@ -105,7 +107,7 @@ This role lets a visitor open a file. It also lets a visitor list the file names
 
 The script also deletes a cloud file when that file is gone from `site/`. A plain upload does not.
 
-<!-- ![Objects list with index.html and 404.html](docs/images/step-06-upload.png) -->
+![Objects list with index.html and 404.html](docs/images/step-06-upload.png)
 
 ### Step 7: Open the site
 
@@ -113,8 +115,11 @@ The script also deletes a cloud file when that file is gone from `site/`. A plai
 2. Open `https://storage.googleapis.com/<bucket-name>/404.html`. The custom missing-page file loads.
 3. Open `http://<bucket-name>.storage.googleapis.com/`. The response is an XML list of the file names, not the home page. That is the documented behavior on this host.
 
-<!-- ![The live home page over HTTP](docs/images/step-07-live-site.png) -->
-<!-- ![The custom 404 page](docs/images/step-07-404.png) -->
+![Home page served from the index.html object address](docs/images/step-07-live-site.png)
+
+![The 404.html object, the custom missing page](docs/images/step-07-404.png)
+
+![Bucket root returning an XML list of the file names](docs/images/step-07-root-list.png)
 
 ### Step 8: Run the check
 
@@ -126,7 +131,7 @@ The script also deletes a cloud file when that file is gone from `site/`. A plai
 
 The last line should be `16 passed, 0 failed`.
 
-<!-- ![verify.sh printing 16 passed, 0 failed](docs/images/step-08-verify.png) -->
+![verify.sh printing 16 passed, 0 failed](docs/images/step-08-verify.png)
 
 ### Step 9: Clean up when you're done
 
@@ -140,20 +145,7 @@ The nightly sweep is a different file, `cloud-projects/environment-control/envct
 
 A deleted project id cannot be reused until Google finishes the delete, which can take 30 days. Pick a new `GCP_PROJECT_ID` in `.env` for the next build.
 
-<!-- ![Teardown script listing the project and the bucket, and asking for the project id](docs/images/step-09-teardown.png) -->
-
-### Screenshots still to take
-
-- `docs/images/step-01-project.png`
-- `docs/images/step-02-billing.png` (crop the billing account id)
-- `docs/images/step-03-bucket.png`
-- `docs/images/step-04-website.png`
-- `docs/images/step-05-public-read.png`
-- `docs/images/step-06-upload.png`
-- `docs/images/step-07-live-site.png`
-- `docs/images/step-07-404.png`
-- `docs/images/step-08-verify.png`
-- `docs/images/step-09-teardown.png`
+![Teardown script listing the bucket, the identity, and the GitHub value names, and asking for the project id](docs/images/step-09-teardown.png)
 
 ---
 
